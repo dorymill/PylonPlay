@@ -12,6 +12,8 @@ class DataSource
 
     public:
 
+        DataSource ();
+
         void registerHit(Zone score);
         
         void registerListener(EventListener* listener);

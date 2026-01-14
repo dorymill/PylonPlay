@@ -22,7 +22,7 @@ class Hit
 
         Zone score;
 
-        seconds time;
+        milliseconds time;
 
 };
 
