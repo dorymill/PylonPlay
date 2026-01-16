@@ -15,7 +15,7 @@ using namespace std::this_thread;
 int main () {
 
     /* Create the game */
-    Open openGame (true, 1, 10, seconds(15));
+    Open openGame (false, 1, 10, seconds(15));
 
     /* Create a data source */
     DataSource dataSrc;
@@ -43,18 +43,26 @@ int main () {
     cout << "[T] Game Start command issued." << endl;
     openGame.start ();
 
-    cout << "[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . ." << endl;
-    while (openGame.getState () == State::RUNNING) {
+    // cout << "[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . ." << endl;
+    // while (openGame.getState () == State::RUNNING) {
 
-        /* Trigger a 180 ms pair every second */
+    //     /* Trigger a 180 ms pair every second */
+    //     sleep_for(milliseconds(1000));
+    //     dataSrc.registerHit(Zone::Alpha);
+    //     sleep_for(milliseconds(180));
+    //     dataSrc.registerHit(Zone::Charlie);
+
+    // }
+
+    
+    cout << "[T] Allowing the timeout to elapse after a single shot. . ." << endl;
+    do {
         sleep_for(milliseconds(1000));
-        dataSrc.registerHit(Zone::Alpha);
-        sleep_for(milliseconds(180));
-        dataSrc.registerHit(Zone::Charlie);
+        dataSrc.registerHit(Zone::Delta);
+        sleep_for(seconds(20));
 
-    }
-
-
+    } while (openGame.getState() == State::RUNNING);
+    
     cout << "[T] Test complete." << endl;
     return 0;
 }
