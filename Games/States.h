@@ -5,7 +5,6 @@
 enum class State {
 
     RESET,
-    INIT,
     READY,
     RUNNING,
     DONE,

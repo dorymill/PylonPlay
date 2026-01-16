@@ -30,3 +30,27 @@ DataSource::registerHit(Zone score)
     }
 
 }
+
+/**
+ * @brief This method will register a listener for the 
+ *        data events to call.
+ * 
+ * @param listener 
+ */
+void
+DataSource::registerListener (EventListener* listener)
+{
+    listeners.push_back (listener);
+}
+
+
+/**
+ * @brief This method removes the last listener added to 
+ *        the listener vector.
+ * 
+ */
+void
+DataSource::removeListener ()
+{
+    listeners.pop_back ();
+}

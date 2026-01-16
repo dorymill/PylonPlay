@@ -27,4 +27,4 @@ class Hit
 };
 
 
-#endif HIT_H
+#endif

@@ -21,6 +21,7 @@ class iGame
         /* Required methods*/
         virtual void start () = 0;
         virtual void reset () = 0;
+        virtual void gameStateMachine () = 0;
 
         virtual State getState () = 0;
 

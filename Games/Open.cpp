@@ -23,13 +23,17 @@ using namespace std;
  * 
  * @param isMaster 
  */
-Open::Open (bool isMaster, int nSensors, seconds timeout) :
-    isMaster(isMaster), state(State::INIT), running(true),
+Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout) :
+    isMaster(isMaster), state(State::RESET), running(true),
     nSensors(nSensors), timerRunning(false), timeout(timeout),
-    resetFlag(false), startSignal(false), nUnitHitsMax(1), 
-    nGlobalHitsMax(nSensors), nuHits(0), ngHits(0)
+    resetFlag(false), startSignal(false), nUnitHitsMax(hitsPerSensor), 
+    nGlobalHitsMax(hitsPerSensor*nSensors), nuHits(0), ngHits(0),
+    hitDetected(false)
 {
 
+    cout << "[0] Open game mode created with " << nSensors << " sensors,\n"
+         << "expecting " << hitsPerSensor << " shots per sensor \n"
+         << "within " << timeout.count() << " seconds." << endl;
 
 }
 
@@ -44,7 +48,7 @@ Open::Open (bool isMaster, int nSensors, seconds timeout) :
  *               if master. ->RESET
  */
 void
-Open::openModeStateMachine ()
+Open::gameStateMachine ()
 {
 
     /* The magic! */
@@ -62,14 +66,16 @@ Open::openModeStateMachine ()
                 /* Set all relevant state variables back
                     to their defaults
                 */
-               running          = true;
+                running         = true;
                 resetFlag       = false;
                 timerRunning    = false;
                 startSignal     = false;
+                hitDetected     = false;
                 nuHits          = 0;
                 ngHits          = 0;
 
                 state = State::READY;
+                cout << "[O] Open SM: Reset Complete. Entering Ready." << endl;
 
                 break;
 
@@ -78,6 +84,7 @@ Open::openModeStateMachine ()
                 /* Spin here until we get the green light */
                 if(startSignal) {
                     state = State::RUNNING;
+                    cout << "[O] Open SM: Entering Running." << endl;
                 }
 
                 break;
@@ -88,6 +95,7 @@ Open::openModeStateMachine ()
                 if(!timerRunning) {
                     timerRunning = true;
                     startTime    = high_resolution_clock::now();
+                    cout << "[O] Open SM: Timer started." << endl;
                 
                 } else {
 
@@ -97,6 +105,7 @@ Open::openModeStateMachine ()
                     /* If we've timed out, move to the done state. */
                     if(elapsed >= timeout) {
                         state = State::DONE;
+                        cout << "[O] Open SM: Timeout Elapsed. Entering Done." << endl;
                     }
 
                     /* Exit condition checking */
@@ -106,6 +115,7 @@ Open::openModeStateMachine ()
                         the hits for the entire game. */
                         if(ngHits >= nGlobalHitsMax) {
                             state = State::DONE;
+                            cout << "[O] Open SM: Max Hits detected as master. Entering Done." << endl;
                         }
 
                     } else {
@@ -113,6 +123,7 @@ Open::openModeStateMachine ()
                            the hits for this particular unit. */
                         if(nuHits >= nUnitHitsMax) {
                             state = State::DONE;
+                            cout << "[O] Open SM: Max Hits detected as target. Entering Done." << endl;
                         }
                     }
     
@@ -125,6 +136,9 @@ Open::openModeStateMachine ()
                        needs to be in. */
                     if(hitDetected) {
     
+                        /* Increment the unit hit counter */
+                        nuHits++;
+
                         if (isMaster) {
                             /* Increment the global hit counter */
                             ngHits++;
@@ -132,9 +146,6 @@ Open::openModeStateMachine ()
                             /* Alert the master of this hit */
                             alertHit ();
                         }
-
-                        /* Increment the unit hit counter */
-                        nuHits++;
                         
                         /* Drive the hit flag low */
                         hitDetected = false;
@@ -154,6 +165,9 @@ Open::openModeStateMachine ()
                     /* Otherwise, simply reset. */
                     state = State::RESET;
                 }
+
+                cout << "[O] Open SM: Final Operations done. Entering Reset." << endl;
+
                 break;
         } 
     }
@@ -167,17 +181,14 @@ Open::openModeStateMachine ()
 void 
 Open::alertHit ()
 {
+    /* Replace this logic with serializing and sendint the hit to the master. */
     if (hitQueue.size() > 0) {
-        /* Report and pop elements off the queue */
-        while(hitQueue.size() != 0) {
 
-            Hit hit = hitQueue.front ();
+            Hit hit = hitQueue.back();
 
-            cout << "Hit " << (nuHits + 1) << " | " << static_cast<int>(hit.score) << endl;
+            cout << "[O] Hit " << nuHits << " | " << static_cast<int>(hit.score) << " points at " <<
+            static_cast<double>(hit.time.count())/1000.0 << "s." << endl;
 
-            hitQueue.pop();
-
-        }
     }
 }
 
@@ -212,7 +223,21 @@ Open::setLED ()
 void
 Open::finalReport ()
 {
-    // TO-DO: Implement
+
+    /* Replace with final report serialization and sending to user */
+    cout << "[O] Issuing Final Report . . ." << endl;
+    int hitNum = 0;
+
+    while(hitQueue.size() != 0) {
+
+        Hit hit = hitQueue.front();
+
+        cout << "[OF] Hit " << ++hitNum << " | " << static_cast<int>(hit.score) << " points at " <<
+        static_cast<double>(hit.time.count())/1000.0 << "s." << endl;
+
+        hitQueue.pop();
+
+    }
 }
 
 /**
@@ -276,47 +301,3 @@ Open::getState ()
  *        and timestamped on receipt.
  * 
  */
-class HitListener : public EventListener
-
-{
-
-    public:
-
-        
-
-        explicit HitListener (queue<Hit>* pHitQueue, high_resolution_clock::time_point startTime,
-                              bool* phitDetect) :    
-            pHitQueue(pHitQueue), startTime(startTime), hitDetect(phitDetect)
-        {
-            /* Get reference to the mode's hit queue */
-        }
-
-        void registerHit(Zone score) override {
-
-            if(pHitQueue) {
-
-                /* Popualte Hit fields */
-                Hit hit = Hit(score);
-
-                /* Calculate the hit time from the mode provided start time. */
-                hit.time = duration_cast<seconds>(high_resolution_clock::now()-startTime);
-
-                /* Push it to the queue*/
-                pHitQueue->push(hit);
-
-                /* Alert the system a hit has been detected */
-                *hitDetect = true;
-
-            }
-
-        }
-    
-    private:
-
-        queue<Hit>* pHitQueue;
-
-        bool* hitDetect;
-
-        high_resolution_clock::time_point startTime;
-
-};
