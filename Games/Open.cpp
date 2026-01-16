@@ -133,9 +133,16 @@ Open::gameStateMachine ()
                        then we simply pop it off the queue
                        and send it to the master, otherwise
                        it's already in the internal queue it
-                       needs to be in. */
+                       needs to be in. If the master has gotten
+                       all of its hits, it simply needs to aggregate 
+                       data until the timeout has been hit. Do no shot
+                       aggregation thereafter. */
                     if(hitDetected) {
     
+                        playSound ();
+
+                        setLED ();
+
                         /* Increment the unit hit counter */
                         nuHits++;
 
@@ -292,12 +299,13 @@ Open::getState ()
     return state;
 }
 
-/** Abstract Class Implementation */
 /**
- * @brief This is the implementation of the abstract
- *        EventListener for Open mode, intended to provide the 
- *        Observer-Listener pattern for the shot
- *        detection events, denoted by their score,
- *        and timestamped on receipt.
+ * @brief This method terminates the operation of the game 
+ *        statemachine and execution thread.
  * 
  */
+void
+Open::kill ()
+{
+    running = false;
+}

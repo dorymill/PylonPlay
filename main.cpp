@@ -30,7 +30,7 @@ int main () {
     dataSrc.registerListener(openGame.hitListener);
 
     /* Launch the game */
-    thread openGameThread([&openGame]() { while(true) {openGame.gameStateMachine(); }});
+    thread openGameThread([&openGame]() { while(openGame.running) {openGame.gameStateMachine(); }});
     
 
     while (openGame.getState() != State::READY) {
@@ -62,6 +62,11 @@ int main () {
         sleep_for(seconds(20));
 
     } while (openGame.getState() == State::RUNNING);
+
+    /* Terminate the game thread gracefully */
+    openGame.kill();
+
+    openGameThread.join();
     
     cout << "[T] Test complete." << endl;
     return 0;

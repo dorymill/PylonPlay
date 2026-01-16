@@ -24,12 +24,14 @@ class Open : public iGame
         high_resolution_clock::time_point startTime;
         
         bool hitDetected;
+        bool running;
         
         /* Interface methods */
         void gameStateMachine () override;
 
         void start () override;
         void reset () override;
+        void kill  () override;
 
         State getState () override;
 
@@ -44,12 +46,11 @@ class Open : public iGame
         seconds      timeout;
         seconds      elapsed;
         
-        bool running;
         bool isMaster;
         bool timerRunning;
-        
         bool resetFlag;
         bool startSignal;
+        bool masterMaxed;
         
         int nuHits;
         int ngHits;
