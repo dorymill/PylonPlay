@@ -24,11 +24,13 @@ using namespace std;
  * @param isMaster 
  */
 Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout) :
-    isMaster(isMaster), state(State::RESET), running(true),
-    nSensors(nSensors), timerRunning(false), timeout(timeout),
-    resetFlag(false), startSignal(false), nUnitHitsMax(hitsPerSensor), 
-    nGlobalHitsMax(hitsPerSensor*nSensors), nuHits(0), ngHits(0),
-    hitDetected(false)
+    hitDetected(false), running(true), state(State::RESET), 
+    timeout(timeout), isMaster(isMaster), timerRunning(false),
+    resetFlag(false), startSignal(false), masterMaxed(false),
+    nuHits(0), ngHits(0), nSensors(nSensors),
+    nUnitHitsMax(hitsPerSensor), nGlobalHitsMax(hitsPerSensor*nSensors)
+    
+    
 {
 
     cout << "[0] Open game mode created with " << nSensors << " sensors,\n"
@@ -133,7 +135,9 @@ Open::gameStateMachine ()
                        then we simply pop it off the queue
                        and send it to the master, otherwise
                        it's already in the internal queue it
-                       needs to be in. If the master has gotten
+                       needs to be in. 
+                       
+                       If the master has gotten
                        all of its hits, it simply needs to aggregate 
                        data until the timeout has been hit. Do no shot
                        aggregation thereafter. */

@@ -41,3 +41,12 @@
 *.dwo
 
 /.vscode
+PylonPlay/platformio.ini
+.gitignore
+PylonPlay/src/main.cpp
+PylonPlay/.vscode/extensions.json
+PylonPlay/sdkconfig.esp32-s3-devkitc-1
+PylonPlay/CMakeLists.txt
+PylonPlay/lib/README
+PylonPlay/include/README
+PylonPlay/test/README

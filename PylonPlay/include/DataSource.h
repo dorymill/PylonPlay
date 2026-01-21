@@ -1,9 +1,9 @@
 #ifndef TSRC_H
 #define TSRC_H
 
-#include "Games/Hit.h"
+#include "Hit.h"
 #include <vector>
-#include "Utilities/EventListener.h"
+#include "EventListener.h"
 
 using namespace std;
 

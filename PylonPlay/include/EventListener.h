@@ -1,7 +1,7 @@
 #ifndef EVTL_H
 #define EVTL_H
 
-#include "Games/Hit.h"
+#include "Hit.h"
 
 class EventListener {
 

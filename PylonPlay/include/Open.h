@@ -4,8 +4,9 @@
 #include <chrono>
 #include <queue>
 #include "Hit.h"
-#include "Utilities/EventListener.h"
+#include "EventListener.h"
 #include "iGame.h"
+#include <atomic>
 
 using namespace std::chrono;
 using namespace std;
@@ -23,7 +24,7 @@ class Open : public iGame
         
         high_resolution_clock::time_point startTime;
         
-        bool hitDetected;
+        atomic<bool> hitDetected;
         bool running;
         
         /* Interface methods */
@@ -50,7 +51,7 @@ class Open : public iGame
         bool timerRunning;
         bool resetFlag;
         bool startSignal;
-        bool masterMaxed;
+        bool masterMaxed; //
         
         int nuHits;
         int ngHits;
@@ -81,8 +82,8 @@ class HitListener : public EventListener
     public:
 
             HitListener (queue<Hit>* pHitQueue, high_resolution_clock::time_point* startTime,
-                              bool* phitDetect) :    
-            pHitQueue(pHitQueue), startTime(startTime), hitDetect(phitDetect)
+                              atomic<bool>* phitDetect) :    
+            pHitQueue(pHitQueue), hitDetect(phitDetect), startTime(startTime)
         {
             /* Get reference to the mode's hit queue */
         }
@@ -111,7 +112,7 @@ class HitListener : public EventListener
 
         queue<Hit>* pHitQueue;
 
-        bool* hitDetect;
+        atomic<bool>* hitDetect;
 
         high_resolution_clock::time_point* startTime;
 
