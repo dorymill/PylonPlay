@@ -13,7 +13,7 @@ class Logger
     public:
         Logger ();
 
-        void logMsg (string);
+        void logMsg (const char*);
 
 };
 

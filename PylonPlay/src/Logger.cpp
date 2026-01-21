@@ -1,6 +1,9 @@
 #include "Logger.h"
 #include "Types.h"
 #include <chrono>
+extern "C" {
+    #include <string.h>
+}
 
 
 using namespace std::chrono;
@@ -24,19 +27,21 @@ Logger::Logger ()
  * @param msg 
  */
 void
-Logger::logMsg (string msg)
+Logger::logMsg (const char* msg)
 {
 
     /* Get a timestamp */
     time_point now = std::chrono::system_clock::now();
 
-    string timestamp = format("[{:%H:%M:%S}]", now);
+    const char* timestamp = format("[{:%H:%M:%S}]", now).c_str();
 
     /* Append it to the message */
-    string output = timestamp + msg + "\n";
+    char output [256] = "";
+
+    int numBytes = sprintf(output, "%s%s\n", timestamp, msg);
 
     /* Send it out */
     uart_wait_tx_done(DEBUG_UART, 100);
-    uart_write_bytes(DEBUG_UART, output.c_str(), output.length());
+    uart_write_bytes(DEBUG_UART, output, numBytes+1);
 
 }

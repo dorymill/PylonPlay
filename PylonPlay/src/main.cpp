@@ -1,11 +1,16 @@
 #include "Types.h"
 #include "Logger.h"
+#include "DataSource.h"
+#include "Open.h"
+#include <thread>
 #include <chrono>
 
 extern "C" {
   #include <string.h>
 }
 
+using namespace std::chrono;
+using namespace std::this_thread;
 
 static QueueHandle_t uart_queue;
 static uart_port_t uart;
@@ -14,7 +19,8 @@ static ledc_channel_config_t ledChannel;
 
 static int startUart (void);
 static int startRGB  (Logger*);
-static int toggleLED (bool);
+int toggleLED (bool);
+void ledTest (Logger*);
 
 extern "C" {
     void app_main(void);
@@ -39,29 +45,71 @@ void app_main(void) {
         logger.logMsg("[+] LED Peripheral initialized.");
     }
 
+    /* Create the game */
+    logger.logMsg("[+] Creating Open Mode. . .");
+    Open openGame (false, 1, 10, seconds(15), &logger);
+    logger.logMsg("[+] Done!");
 
-    /* Main Entry point For the program */
-    for (;;) {
+    /* Create a data source */
+    logger.logMsg("[+] Creating DataSource. . .");
+    DataSource dataSrc;
+    logger.logMsg("[+] Done!");
 
-        /* Do a test write */
-        if(toggleLED(true) == 0) {
-            logger.logMsg("[+] LED toggled on.");
-        } else {
-            logger.logMsg("[-] Failed to toggle led.");
-        }
+    /* Instantaite the hit listener in the game mode */
+    logger.logMsg("[+] Instantiating hit listener. . .");
+    openGame.hitListener = new HitListener (&openGame.hitQueue, 
+                                            &openGame.startTime,
+                                            &openGame.hitDetected);
+    logger.logMsg("[+] Done!");
 
-        /* Rest */
-        sleep(1);
 
-        if(toggleLED(false) == 0){
-            logger.logMsg("[+] LED toggled off.");
-        } else {
-            logger.logMsg("[-] Failed to toggle led.");
-        }
-        
-        /* Rest */
-        sleep(1);
+    /* Register the listener with the data source */
+    logger.logMsg("[+] Registering hit listener. . .");
+    dataSrc.registerListener(openGame.hitListener);
+    logger.logMsg("[+] Done!");
+
+    /* Launch the game */
+    logger.logMsg("[+] Launching game thread. . .");
+    thread openGameThread([&openGame]() { while(openGame.running) {openGame.gameStateMachine(); }});
+    logger.logMsg("[+] Done!");
+    
+
+    while (openGame.getState() != State::READY) {
+        /* Wait until the state is ready */
+        logger.logMsg("[T] Sleeping while game preps. . .");
+        sleep_for(milliseconds(100));
     }
+
+    /* Start the game. */
+    logger.logMsg("[T] Game Start command issued.");
+    openGame.start ();
+
+    logger.logMsg("[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . .");
+    while (openGame.getState () == State::RUNNING) {
+
+        /* Trigger a 180 ms pair every second */
+        sleep_for(milliseconds(1000));
+        dataSrc.registerHit(Zone::Alpha);
+        sleep_for(milliseconds(180));
+        dataSrc.registerHit(Zone::Charlie);
+
+    }
+
+    
+    // logger.logMsg("[T] Allowing the timeout to elapse after a single shot. . .");
+    // do {
+    //     sleep_for(milliseconds(1000));
+    //     dataSrc.registerHit(Zone::Delta);
+    //     sleep_for(seconds(20));
+
+    // } while (openGame.getState() == State::RUNNING);
+
+    /* Terminate the game thread gracefully */
+    openGame.kill();
+
+    openGameThread.join();
+    
+    logger.logMsg("[T] Test complete.");
 
 }
 
@@ -125,7 +173,7 @@ startRGB (Logger* logger)
 
     success = ledc_timer_config(&ledTimer);
 
-    logger->logMsg("[-] RBG TImer Config Error Code: " + to_string(success));
+    logger->logMsg(("[-] RBG TImer Config Error Code: " + to_string(success)).c_str());
 
     ledChannel = {
         .gpio_num   = DEBUG_LED,
@@ -139,7 +187,7 @@ startRGB (Logger* logger)
 
     success &= ledc_channel_config(&ledChannel);
 
-    logger->logMsg("[-] RGB Channel Config Error Code: " + to_string(success));
+    logger->logMsg(("[-] RGB Channel Config Error Code: " + to_string(success)).c_str());
 
     return success;
 }
@@ -150,7 +198,7 @@ startRGB (Logger* logger)
  * @param state 
  * @return int success
  */
-static int
+int
 toggleLED (bool state)
 {
     int success = 0;
@@ -167,4 +215,30 @@ toggleLED (bool state)
     }
 
     return success;
+}
+
+void
+ledTest (Logger* logger)
+{
+    for(;;){
+        /* Do a test write */
+      if(toggleLED(true) == 0) {
+          logger->logMsg("[+] LED toggled on.");
+      } else {
+          logger->logMsg("[-] Failed to toggle led.");
+      }
+
+      /* Rest */
+      sleep(1);
+
+      if(toggleLED(false) == 0){
+          logger->logMsg("[+] LED toggled off.");
+      } else {
+          logger->logMsg("[-] Failed to toggle led.");
+      }
+      
+      /* Rest */
+      sleep(1);
+
+    }
 }

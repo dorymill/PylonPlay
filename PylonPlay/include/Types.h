@@ -8,7 +8,7 @@ extern "C" {
 
 #define DEBUG_UART UART_NUM_0
 
-#define UART_BUFF_SIZE (1024 * 2)
+#define UART_BUFF_SIZE 2048
 
 #define DEBUG_TX 43
 #define DEBUG_RX 44

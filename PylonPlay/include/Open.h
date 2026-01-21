@@ -1,11 +1,12 @@
 #ifndef OPEN_H
 #define OPEN_H
 
-#include <chrono>
-#include <queue>
 #include "Hit.h"
 #include "EventListener.h"
 #include "iGame.h"
+#include "Logger.h"
+#include <chrono>
+#include <queue>
 #include <atomic>
 
 using namespace std::chrono;
@@ -16,7 +17,7 @@ class Open : public iGame
 
     public:
 
-        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout);
+        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* logger);
         
         EventListener* hitListener;
         
@@ -41,6 +42,7 @@ class Open : public iGame
     private:
 
         /* Variables */
+        Logger* logger;
         State state;
 
         high_resolution_clock::time_point time;

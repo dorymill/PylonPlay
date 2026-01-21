@@ -23,8 +23,8 @@ using namespace std;
  * 
  * @param isMaster 
  */
-Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout) :
-    hitDetected(false), running(true), state(State::RESET), 
+Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr) :
+    hitDetected(false), running(true), logger(lgr), state(State::RESET), 
     timeout(timeout), isMaster(isMaster), timerRunning(false),
     resetFlag(false), startSignal(false), masterMaxed(false),
     nuHits(0), ngHits(0), nSensors(nSensors),
@@ -33,9 +33,9 @@ Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout) :
     
 {
 
-    cout << "[0] Open game mode created with " << nSensors << " sensors,\n"
-         << "expecting " << hitsPerSensor << " shots per sensor \n"
-         << "within " << timeout.count() << " seconds." << endl;
+    // logger->logMsg(("[0] Open game mode created with " + to_string(nSensors) + " sensors,\n"
+    //      + "expecting " + to_string(hitsPerSensor) + " shots per sensor \n"
+    //      + "within " + to_string(timeout.count()) + " seconds.").c_str());
 
 }
 
@@ -77,7 +77,7 @@ Open::gameStateMachine ()
                 ngHits          = 0;
 
                 state = State::READY;
-                cout << "[O] Open SM: Reset Complete. Entering Ready." << endl;
+                logger->logMsg("[O] Open SM: Reset Complete. Entering Ready.");
 
                 break;
 
@@ -86,7 +86,7 @@ Open::gameStateMachine ()
                 /* Spin here until we get the green light */
                 if(startSignal) {
                     state = State::RUNNING;
-                    cout << "[O] Open SM: Entering Running." << endl;
+                    logger->logMsg("[O] Open SM: Entering Running.");
                 }
 
                 break;
@@ -97,7 +97,7 @@ Open::gameStateMachine ()
                 if(!timerRunning) {
                     timerRunning = true;
                     startTime    = high_resolution_clock::now();
-                    cout << "[O] Open SM: Timer started." << endl;
+                    logger->logMsg("[O] Open SM: Timer started.");
                 
                 } else {
 
@@ -107,7 +107,7 @@ Open::gameStateMachine ()
                     /* If we've timed out, move to the done state. */
                     if(elapsed >= timeout) {
                         state = State::DONE;
-                        cout << "[O] Open SM: Timeout Elapsed. Entering Done." << endl;
+                        logger->logMsg("[O] Open SM: Timeout Elapsed. Entering Done.");
                     }
 
                     /* Exit condition checking */
@@ -117,7 +117,7 @@ Open::gameStateMachine ()
                         the hits for the entire game. */
                         if(ngHits >= nGlobalHitsMax) {
                             state = State::DONE;
-                            cout << "[O] Open SM: Max Hits detected as master. Entering Done." << endl;
+                            logger->logMsg("[O] Open SM: Max Hits detected as master. Entering Done.");
                         }
 
                     } else {
@@ -125,7 +125,7 @@ Open::gameStateMachine ()
                            the hits for this particular unit. */
                         if(nuHits >= nUnitHitsMax) {
                             state = State::DONE;
-                            cout << "[O] Open SM: Max Hits detected as target. Entering Done." << endl;
+                            logger->logMsg("[O] Open SM: Max Hits detected as target. Entering Done.");
                         }
                     }
     
@@ -177,7 +177,7 @@ Open::gameStateMachine ()
                     state = State::RESET;
                 }
 
-                cout << "[O] Open SM: Final Operations done. Entering Reset." << endl;
+                logger->logMsg("[O] Open SM: Final Operations done. Entering Reset.");
 
                 break;
         } 
@@ -197,8 +197,8 @@ Open::alertHit ()
 
             Hit hit = hitQueue.back();
 
-            cout << "[O] Hit " << nuHits << " | " << static_cast<int>(hit.score) << " points at " <<
-            static_cast<double>(hit.time.count())/1000.0 << "s." << endl;
+            logger->logMsg(("[O] Hit " + to_string(nuHits) + " | " + to_string(static_cast<int>(hit.score)) + " points at " +
+            to_string(static_cast<double>(hit.time.count())/1000.0) + "s.").c_str());
 
     }
 }
@@ -236,15 +236,15 @@ Open::finalReport ()
 {
 
     /* Replace with final report serialization and sending to user */
-    cout << "[O] Issuing Final Report . . ." << endl;
+    logger->logMsg("[O] Issuing Final Report . . .");
     int hitNum = 0;
 
     while(hitQueue.size() != 0) {
 
         Hit hit = hitQueue.front();
 
-        cout << "[OF] Hit " << ++hitNum << " | " << static_cast<int>(hit.score) << " points at " <<
-        static_cast<double>(hit.time.count())/1000.0 << "s." << endl;
+        logger->logMsg(("[OF] Hit " + to_string(++hitNum) + " | " + to_string(static_cast<int>(hit.score)) + " points at " +
+        to_string(static_cast<double>(hit.time.count())/1000.0) + "s.").c_str());
 
         hitQueue.pop();
 
