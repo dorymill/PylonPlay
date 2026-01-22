@@ -27,8 +27,9 @@ using namespace std;
  * 
  * @param isMaster 
  */
-Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr) :
-    hitDetected(false), running(true), killed(false), logger(lgr), state(State::RESET), 
+Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr, led_strip_handle_t* ledStr) :
+    hitDetected(false), running(true), killed(false), logger(lgr),
+    ledStrip(ledStr), state(State::RESET), 
     timeout(timeout), isMaster(isMaster), timerRunning(false),
     resetFlag(false), startSignal(false), masterMaxed(false),
     nuHits(0), ngHits(0), nSensors(nSensors),
@@ -231,7 +232,14 @@ Open::playSound ()
 void
 Open::setLED ()
 {
-    // TO-DO: Implement
+
+    /* Flash the LED for 10 ms */
+    led_strip_set_pixel(*ledStrip, 0, 0, 0, 32);
+    led_strip_refresh(*ledStrip);
+
+    vTaskDelay(pdMS_TO_TICKS(5));
+
+    led_strip_clear(*ledStrip);
 }
 
 /**

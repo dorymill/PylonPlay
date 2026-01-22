@@ -9,6 +9,10 @@
 #include <queue>
 #include <atomic>
 
+extern "C" {
+    #include <led_strip.h>
+}
+
 
 using namespace std::chrono;
 using namespace std;
@@ -18,7 +22,7 @@ class Open : public iGame
 
     public:
 
-        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* logger);
+        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* logger, led_strip_handle_t* ledStrip);
         
         EventListener* hitListener;
         
@@ -45,6 +49,7 @@ class Open : public iGame
 
         /* Variables */
         Logger* logger;
+        led_strip_handle_t* ledStrip;
         State state;
 
         high_resolution_clock::time_point time;

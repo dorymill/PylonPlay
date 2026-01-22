@@ -7,6 +7,7 @@
 
 extern "C" {
   #include <string.h>
+  #include <driver/gpio.h>
 }
 
 using namespace std::chrono;
@@ -14,13 +15,13 @@ using namespace std::this_thread;
 
 static QueueHandle_t uart_queue;
 static uart_port_t uart;
-static ledc_timer_config_t ledTimer;
-static ledc_channel_config_t ledChannel;
+static led_strip_handle_t led_strip;
+static Logger logger;
 
 static int startUart (void);
 static int startRGB  (Logger*);
-int toggleLED (bool);
-void ledTest (Logger*);
+static int toggleLED (bool);
+static void ledTest (Logger*);
 
 extern "C" {
     void app_main(void);
@@ -36,18 +37,17 @@ void app_main(void) {
 
     /* Pre main statemachine setup routines */
     startUart ();
-    
-    Logger logger;
 
+    /* Start the RGB LED Periph */
     if(startRGB (&logger) != 0) {
-        logger.logMsg("[+] Failed to start LED peripheral.");
+        logger.logMsg("[-] Failed to start LED peripheral.");
     } else {
         logger.logMsg("[+] LED Peripheral initialized.");
     }
 
     /* Create the game */
     logger.logMsg("[+] Creating Open Mode. . .");
-    Open openGame (false, 1, 10, seconds(15), &logger);
+    Open openGame (false, 1, 10, seconds(15), &logger, &led_strip);
     logger.logMsg("[+] Done!");
 
     /* Create a data source */
@@ -74,8 +74,8 @@ void app_main(void) {
     logger.logMsg("[+] Done!");
     
 
+    /* Wait until the state is ready */
     while (openGame.getState() != State::READY) {
-        /* Wait until the state is ready */
         logger.logMsg("[T] Sleeping while game preps. . .");
         sleep_for(milliseconds(100));
     }
@@ -84,7 +84,7 @@ void app_main(void) {
     logger.logMsg("[T] Game Start command issued.");
     openGame.start ();
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     logger.logMsg("[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . .");
     while (openGame.getState () == State::RUNNING) {
@@ -98,13 +98,13 @@ void app_main(void) {
     }
 
     
-    // logger.logMsg("[T] Allowing the timeout to elapse after a single shot. . .");
-    // do {
-    //     sleep_for(milliseconds(1000));
-    //     dataSrc.registerHit(Zone::Delta);
-    //     sleep_for(seconds(20));
+    // // logger.logMsg("[T] Allowing the timeout to elapse after a single shot. . .");
+    // // do {
+    // //     sleep_for(milliseconds(1000));
+    // //     dataSrc.registerHit(Zone::Delta);
+    // //     sleep_for(seconds(20));
 
-    // } while (openGame.getState() == State::RUNNING);
+    // // } while (openGame.getState() == State::RUNNING);
 
     /* Terminate the game thread gracefully */
     openGame.kill();
@@ -143,10 +143,10 @@ startUart (void)
     };
 
     /* Set Comms Pins */
-    success &= uart_param_config(uart, &uart_config);
+    success |= uart_param_config(uart, &uart_config);
 
     /* Start the action */
-    success &= uart_set_pin(uart, DEBUG_TX, DEBUG_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    success |= uart_set_pin(uart, DEBUG_TX, DEBUG_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     return success;
 
@@ -164,33 +164,25 @@ startRGB (Logger* logger)
 
     int success = 0;
 
-    ledTimer = {
-
-        .speed_mode      = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_8_BIT,
-        .timer_num       = LEDC_TIMER_0,
-        .freq_hz         = 5000,
-        .clk_cfg         = LEDC_AUTO_CLK
+    /* LED strip initialization */
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = DEBUG_LED,
+        .max_leds = 1,
+        .led_model = LED_MODEL_WS2812,
+        .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+        .flags = 0,
     };
 
-    success = ledc_timer_config(&ledTimer);
+    led_strip_rmt_config_t rmt_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz = 10 * 1000 * 1000, // 10MHz
+        .mem_block_symbols = 0,
+        .flags = 0,
+    };
 
-    logger->logMsg(("[-] RBG TImer Config Error Code: " + to_string(success)).c_str());
+    success |= led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip);
 
-    ledChannel = {
-        .gpio_num   = DEBUG_LED,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel    = DEBUG_LED_CHAN,
-        .intr_type  = LEDC_INTR_DISABLE,
-        .timer_sel  = LEDC_TIMER_0,
-        .duty       = 0,
-        .hpoint     = 0,
-        .sleep_mode = LEDC_SLEEP_MODE_KEEP_ALIVE
-    }; 
-
-    success &= ledc_channel_config(&ledChannel);
-
-    logger->logMsg(("[-] RGB Channel Config Error Code: " + to_string(success)).c_str());
+    logger->logMsg("[-] RGB Configured.");
 
     return success;
 }
@@ -201,26 +193,31 @@ startRGB (Logger* logger)
  * @param state 
  * @return int success
  */
-int
+static int
 toggleLED (bool state)
 {
     int success = 0;
 
     if(state) {
-        /* Set to 100% duty cycle */
-        success  = ledc_set_duty(LEDC_LOW_SPEED_MODE, DEBUG_LED_CHAN, 255);
-        success &= ledc_update_duty(LEDC_LOW_SPEED_MODE, DEBUG_LED_CHAN); 
 
-    } else { // Not working for some reason
-        /* Set to 0% duty cycle */
-        success  = ledc_set_duty(LEDC_LOW_SPEED_MODE, DEBUG_LED_CHAN, 0);
-        success &= ledc_update_duty(LEDC_LOW_SPEED_MODE, DEBUG_LED_CHAN); 
+        led_strip_set_pixel(led_strip, 0, 255, 0, 255); // {id, R, G, B}
+        led_strip_refresh(led_strip);
+
+    } else { 
+
+        led_strip_clear(led_strip);
     }
 
     return success;
 }
 
-void
+/**
+ * @brief This method tests the LED functionality
+ *        with a 1 second toggle forever.
+ * 
+ * @param logger 
+ */
+static void
 ledTest (Logger* logger)
 {
     for(;;){
@@ -232,7 +229,7 @@ ledTest (Logger* logger)
       }
 
       /* Rest */
-      sleep(1);
+      vTaskDelay(pdMS_TO_TICKS(1000));
 
       if(toggleLED(false) == 0){
           logger->logMsg("[+] LED toggled off.");
@@ -241,7 +238,7 @@ ledTest (Logger* logger)
       }
       
       /* Rest */
-      sleep(1);
+      vTaskDelay(pdMS_TO_TICKS(1000));
 
     }
 }
