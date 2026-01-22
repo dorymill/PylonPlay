@@ -9,6 +9,7 @@
 #include <queue>
 #include <atomic>
 
+
 using namespace std::chrono;
 using namespace std;
 
@@ -27,6 +28,7 @@ class Open : public iGame
         
         atomic<bool> hitDetected;
         bool running;
+        atomic<bool> killed;
         
         /* Interface methods */
         void gameStateMachine () override;

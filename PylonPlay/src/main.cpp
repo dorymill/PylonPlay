@@ -70,7 +70,7 @@ void app_main(void) {
 
     /* Launch the game */
     logger.logMsg("[+] Launching game thread. . .");
-    thread openGameThread([&openGame]() { while(openGame.running) {openGame.gameStateMachine(); }});
+    thread openGameThread([&openGame]() { while(!openGame.killed && openGame.running) {openGame.gameStateMachine(); }});
     logger.logMsg("[+] Done!");
     
 
@@ -84,13 +84,15 @@ void app_main(void) {
     logger.logMsg("[T] Game Start command issued.");
     openGame.start ();
 
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
     logger.logMsg("[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . .");
     while (openGame.getState () == State::RUNNING) {
 
         /* Trigger a 180 ms pair every second */
-        sleep_for(milliseconds(1000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         dataSrc.registerHit(Zone::Alpha);
-        sleep_for(milliseconds(180));
+        vTaskDelay(pdMS_TO_TICKS(180));
         dataSrc.registerHit(Zone::Charlie);
 
     }
@@ -182,7 +184,8 @@ startRGB (Logger* logger)
         .intr_type  = LEDC_INTR_DISABLE,
         .timer_sel  = LEDC_TIMER_0,
         .duty       = 0,
-        .hpoint     = 0
+        .hpoint     = 0,
+        .sleep_mode = LEDC_SLEEP_MODE_KEEP_ALIVE
     }; 
 
     success &= ledc_channel_config(&ledChannel);

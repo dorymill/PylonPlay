@@ -1,5 +1,9 @@
 #include "Open.h"
 #include <iostream>
+#include <thread>
+extern "C" {
+    #include "freertos/FreeRTOS.h"
+}
 
 using namespace std;
 
@@ -24,7 +28,7 @@ using namespace std;
  * @param isMaster 
  */
 Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr) :
-    hitDetected(false), running(true), logger(lgr), state(State::RESET), 
+    hitDetected(false), running(true), killed(false), logger(lgr), state(State::RESET), 
     timeout(timeout), isMaster(isMaster), timerRunning(false),
     resetFlag(false), startSignal(false), masterMaxed(false),
     nuHits(0), ngHits(0), nSensors(nSensors),
@@ -33,9 +37,9 @@ Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Log
     
 {
 
-    // logger->logMsg(("[0] Open game mode created with " + to_string(nSensors) + " sensors,\n"
-    //      + "expecting " + to_string(hitsPerSensor) + " shots per sensor \n"
-    //      + "within " + to_string(timeout.count()) + " seconds.").c_str());
+    logger->logMsg(("[0] Open game mode created with " + to_string(nSensors) + " sensors,\n"
+         + "expecting " + to_string(hitsPerSensor) + " shots per sensor \n"
+         + "within " + to_string(timeout.count()) + " seconds.").c_str());
 
 }
 
@@ -54,7 +58,7 @@ Open::gameStateMachine ()
 {
 
     /* The magic! */
-    if(running) {
+    if(running && !killed) {
 
         /* Check if we need to reset */
         if(resetFlag) {
@@ -68,7 +72,7 @@ Open::gameStateMachine ()
                 /* Set all relevant state variables back
                     to their defaults
                 */
-                running         = true;
+                if (!killed) running = true;
                 resetFlag       = false;
                 timerRunning    = false;
                 startSignal     = false;
@@ -88,6 +92,9 @@ Open::gameStateMachine ()
                     state = State::RUNNING;
                     logger->logMsg("[O] Open SM: Entering Running.");
                 }
+
+                vTaskDelay(pdMS_TO_TICKS(10));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
                 break;
 
@@ -163,6 +170,8 @@ Open::gameStateMachine ()
                     }
 
                 }
+
+                vTaskDelay(pdMS_TO_TICKS(10));
 
                 break;
 
@@ -311,5 +320,6 @@ Open::getState ()
 void
 Open::kill ()
 {
+    killed = true;
     running = false;
 }
