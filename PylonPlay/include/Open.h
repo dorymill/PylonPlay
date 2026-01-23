@@ -39,7 +39,7 @@ class Open : public iGame
         void reset () override;
         void kill  () override;
 
-        State getState () override;
+        State* getState () override;
 
         void setTimeout (seconds timeout) override;
 
@@ -88,9 +88,8 @@ class HitListener : public EventListener
 
     public:
 
-            HitListener (queue<Hit>* pHitQueue, high_resolution_clock::time_point* startTime,
-                              atomic<bool>* phitDetect) :    
-            pHitQueue(pHitQueue), hitDetect(phitDetect), startTime(startTime)
+            HitListener (queue<Hit>* pHitQueue, atomic<bool>* phitDetect, State* state) :    
+            pHitQueue(pHitQueue), hitDetect(phitDetect), gameState(state)
         {
             /* Get reference to the mode's hit queue */
         }
@@ -99,29 +98,39 @@ class HitListener : public EventListener
 
             if(pHitQueue) {
 
-                /* Popualte Hit fields */
-                Hit* hit = new Hit(score);
+                if(*gameState == State::RUNNING) {
 
-                /* Calculate the hit time from the mode provided start time. */
-                hit->time = duration_cast<milliseconds>(high_resolution_clock::now() - *startTime);
-
-                /* Push it to the queue*/
-                pHitQueue->push(*hit);
-
-                /* Alert the system a hit has been detected */
-                *hitDetect = true;
+                    
+                    /* Popualte Hit fields */
+                    Hit* hit = new Hit(score);
+                    
+                    /* Calculate the hit time from the mode provided start time. */
+                    hit->time = duration_cast<milliseconds>(high_resolution_clock::now() - startTime);
+                    
+                    /* Push it to the queue*/
+                    pHitQueue->push(*hit);
+                    
+                    /* Alert the system a hit has been detected */
+                    *hitDetect = true;
+                }
 
             }
 
         }
-    
+
+        void setStartTime (high_resolution_clock::time_point time) override {
+            startTime = time;
+        }
+
     private:
 
         queue<Hit>* pHitQueue;
 
         atomic<bool>* hitDetect;
 
-        high_resolution_clock::time_point* startTime;
+        high_resolution_clock::time_point startTime;
+
+        State* gameState;
 
 };
 

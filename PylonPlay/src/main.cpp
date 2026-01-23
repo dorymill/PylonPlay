@@ -37,7 +37,7 @@ void app_main(void) {
 
     /* Create the game */
     logger.logMsg("[+] Creating Open Mode. . .");
-    Open openGame (true, 1, 10, seconds(15), &logger, &led);
+    Open openGame (false, 1, 10, seconds(15), &logger, &led);
     logger.logMsg("[+] Done!");
 
     /* Create a data source */
@@ -48,8 +48,8 @@ void app_main(void) {
     /* Instantaite the hit listener in the game mode */
     logger.logMsg("[+] Instantiating hit listener. . .");
     openGame.hitListener = new HitListener (&openGame.hitQueue, 
-                                            &openGame.startTime,
-                                            &openGame.hitDetected);
+                                            &openGame.hitDetected,
+                                            openGame.getState());
     logger.logMsg("[+] Done!");
 
 
@@ -65,7 +65,7 @@ void app_main(void) {
     
 
     /* Wait until the state is ready */
-    while (openGame.getState() != State::READY) {
+    while (*openGame.getState() != State::READY) {
         logger.logMsg("[T] Sleeping while game preps. . .");
         sleep_for(milliseconds(100));
     }
@@ -74,10 +74,10 @@ void app_main(void) {
     logger.logMsg("[T] Game Start command issued.");
     openGame.start ();
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(20));
 
     logger.logMsg("[T] Issuing a 180 ms Alpha-Charlie shot pair every second. . .");
-    while (openGame.getState () == State::RUNNING) {
+    while (*openGame.getState () == State::RUNNING) {
 
         /* Trigger a 180 ms pair every second */
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -90,7 +90,7 @@ void app_main(void) {
     /* Game timout test */
     vTaskDelay(pdMS_TO_TICKS(5000));
     /* Wait until the state is ready */
-    while (openGame.getState() != State::READY) {
+    while (*openGame.getState() != State::READY) {
         logger.logMsg("[T] Sleeping while game preps. . .");
         sleep_for(milliseconds(100));
     }
@@ -98,6 +98,8 @@ void app_main(void) {
     /* Start the game. */
     logger.logMsg("[T] Game Start command issued.");
     openGame.start ();
+
+    vTaskDelay(pdMS_TO_TICKS(10));
     
     logger.logMsg("[T] Allowing the timeout to elapse after a single shot. . .");
     do {
@@ -105,7 +107,7 @@ void app_main(void) {
         dataSrc.registerHit(Zone::Delta);
         sleep_for(seconds(20));
 
-    } while (openGame.getState() == State::RUNNING);
+    } while (*openGame.getState() == State::RUNNING);
 
     /* Terminate the game thread gracefully */
     openGame.kill();

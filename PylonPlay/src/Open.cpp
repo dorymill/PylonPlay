@@ -106,6 +106,7 @@ Open::gameStateMachine ()
                 if(!timerRunning) {
                     timerRunning = true;
                     startTime    = high_resolution_clock::now();
+                    hitListener->setStartTime(startTime);
                     logger->logMsg("[O] Open SM: Timer started.");
                 
                 } else {
@@ -314,10 +315,10 @@ Open::setTimeout (seconds timeout)
  * 
  * @return State 
  */
-State
+State*
 Open::getState ()
 {
-    return state;
+    return &state;
 }
 
 /**
