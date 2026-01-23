@@ -5,13 +5,11 @@
 #include "EventListener.h"
 #include "iGame.h"
 #include "Logger.h"
+#include "LedDriver.h"
 #include <chrono>
 #include <queue>
 #include <atomic>
 
-extern "C" {
-    #include <led_strip.h>
-}
 
 
 using namespace std::chrono;
@@ -22,7 +20,7 @@ class Open : public iGame
 
     public:
 
-        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* logger, led_strip_handle_t* ledStrip);
+        Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* logger, LedDriver* led);
         
         EventListener* hitListener;
         
@@ -49,7 +47,7 @@ class Open : public iGame
 
         /* Variables */
         Logger* logger;
-        led_strip_handle_t* ledStrip;
+        LedDriver* led;
         State state;
 
         high_resolution_clock::time_point time;

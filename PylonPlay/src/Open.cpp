@@ -27,9 +27,9 @@ using namespace std;
  * 
  * @param isMaster 
  */
-Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr, led_strip_handle_t* ledStr) :
+Open::Open (bool isMaster, int nSensors, int hitsPerSensor, seconds timeout, Logger* lgr, LedDriver* ledStr) :
     hitDetected(false), running(true), killed(false), logger(lgr),
-    ledStrip(ledStr), state(State::RESET), 
+    led(ledStr), state(State::RESET), 
     timeout(timeout), isMaster(isMaster), timerRunning(false),
     resetFlag(false), startSignal(false), masterMaxed(false),
     nuHits(0), ngHits(0), nSensors(nSensors),
@@ -74,6 +74,7 @@ Open::gameStateMachine ()
                     to their defaults
                 */
                 if (!killed) running = true;
+                queue<Hit>().swap(hitQueue);
                 resetFlag       = false;
                 timerRunning    = false;
                 startSignal     = false;
@@ -186,7 +187,7 @@ Open::gameStateMachine ()
                     /* Otherwise, simply reset. */
                     state = State::RESET;
                 }
-
+                
                 logger->logMsg("[O] Open SM: Final Operations done. Entering Reset.");
 
                 break;
@@ -234,12 +235,11 @@ Open::setLED ()
 {
 
     /* Flash the LED for 10 ms */
-    led_strip_set_pixel(*ledStrip, 0, 0, 0, 32);
-    led_strip_refresh(*ledStrip);
+    led->setLed(true, 255, 0, 255);
 
     vTaskDelay(pdMS_TO_TICKS(5));
 
-    led_strip_clear(*ledStrip);
+    led->setLed(false, 255, 0, 255);
 }
 
 /**
